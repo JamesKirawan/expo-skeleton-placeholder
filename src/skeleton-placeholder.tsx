@@ -1,4 +1,5 @@
 import MaskedView from '@react-native-masked-view/masked-view';
+import {LinearGradient} from 'expo-linear-gradient';
 import * as React from 'react';
 import {
   Animated,
@@ -10,7 +11,6 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 
 const WINDOW_WIDTH = Dimensions.get('window').width;
 
@@ -181,6 +181,7 @@ const transformToPlaceholder = (
       typeof element.props.children === 'string' ||
       (Array.isArray(element.props.children) &&
         element.props.children.every((x: any) => x == null || typeof x === 'string'));
+
     const props = element.props;
     const style =
       element.type?.displayName === SkeletonPlaceholder.Item.displayName
@@ -211,6 +212,12 @@ const transformToPlaceholder = (
       console.log(isPlaceholder ? '[skeleton] placeholder' : '[skeleton] container', {
         element,
       });
+
+    if (
+      element.type?.displayName !== SkeletonPlaceholder.Item.displayName ||
+      element.type?.displayName !== 'View'
+    )
+      return element;
 
     return (
       <View
