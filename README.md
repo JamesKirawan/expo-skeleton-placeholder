@@ -5,8 +5,6 @@ Android and iOS
 
 ![](https://user-images.githubusercontent.com/20586489/194037825-92efe72b-2e00-407d-8b18-ab949a85e1ea.mp4)
 
-<a href="https://www.buymeacoffee.com/henriqueramos" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-
 ### Installation
 
 > Note: This package requires **@react-native-masked-view/masked-view** and **react-native-linear-gradient**
@@ -45,13 +43,13 @@ pod install
 Using yarn:
 
 ```bash
-yarn add react-native-skeleton-placeholder
+yarn add @james-kirawan/expo-skeleton-placeholder
 ```
 
 Using npm:
 
 ```bash
-npm install react-native-skeleton-placeholder --save
+npm install @james-kirawan/expo-skeleton-placeholder --save
 ```
 
 ### Usage
@@ -106,14 +104,14 @@ const App = () => {
 
 #### SkeletonPlaceholder
 
-|      Prop       |                             Description                              |       Type        |  Default  |
-| :-------------: | :------------------------------------------------------------------: | :---------------: | :-------: |
-| backgroundColor |                 Determines the color of placeholder                  |    string       | _#E1E9EE_ |
-| highlightColor  |            Determines the highlight color of placeholder             |   string (hex \| rgb \| rgba)    | _#F2F8FC_ |
-|      speed      | Determines the animation speed in milliseconds. 0 disables animation |      number       |   _800_   |
-|    direction    |                  Determines the animation direction                  | "right" \| "left" |  "right"  |
-|     enabled     |   Determines if Skeleton should show placeholders or its children    |      boolean      |   true    |
-|  borderRadius   |          Determines default border radius for placeholders           |      number       | undefined |
+|      Prop       |                             Description                              |            Type             |  Default  |
+| :-------------: | :------------------------------------------------------------------: | :-------------------------: | :-------: |
+| backgroundColor |                 Determines the color of placeholder                  |           string            | _#E1E9EE_ |
+| highlightColor  |            Determines the highlight color of placeholder             | string (hex \| rgb \| rgba) | _#F2F8FC_ |
+|      speed      | Determines the animation speed in milliseconds. 0 disables animation |           number            |   _800_   |
+|    direction    |                  Determines the animation direction                  |      "right" \| "left"      |  "right"  |
+|     enabled     |   Determines if Skeleton should show placeholders or its children    |           boolean           |   true    |
+|  borderRadius   |          Determines default border radius for placeholders           |           number            | undefined |
 
 #### SkeletonPlaceholder.Item
 

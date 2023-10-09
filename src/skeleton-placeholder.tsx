@@ -1,16 +1,16 @@
 import MaskedView from '@react-native-masked-view/masked-view';
 import {LinearGradient} from 'expo-linear-gradient';
 import * as React from 'react';
-import {
-  Animated,
-  Dimensions,
+import {Dimensions, LayoutRectangle, StyleProp, StyleSheet, View, ViewStyle} from 'react-native';
+import Animated, {
+  cancelAnimation,
   Easing,
-  LayoutRectangle,
-  StyleProp,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from 'react-native';
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 const WINDOW_WIDTH = Dimensions.get('window').width;
 
@@ -50,6 +50,10 @@ type SkeletonPlaceholderProps = {
    * Determines width of the highlighted area
    */
   shimmerWidth?: number;
+  /**
+   * Determines animation will reverse or not
+   */
+  reverse?: boolean;
 };
 
 type SkeletonPlaceholderItemProps = ViewStyle & {
@@ -68,47 +72,53 @@ const SkeletonPlaceholder: React.FC<SkeletonPlaceholderProps> & {
   direction = 'right',
   borderRadius,
   shimmerWidth,
+  reverse = false,
 }) => {
   const [layout, setLayout] = React.useState<LayoutRectangle>();
-  const animatedValueRef = React.useRef(new Animated.Value(0));
+  const animatedValueRef = React.useRef(useSharedValue<number>(0)).current;
   const isAnimationReady = Boolean(speed && layout?.width && layout?.height);
 
   React.useEffect(() => {
-    if (!isAnimationReady) return;
+    if (!isAnimationReady) {
+      return;
+    }
 
-    const loop = Animated.loop(
-      Animated.timing(animatedValueRef.current, {
-        toValue: 1,
+    animatedValueRef.value = withRepeat(
+      withTiming(1, {
         duration: speed,
         easing: Easing.ease,
-        useNativeDriver: true,
       }),
+      -1,
+      reverse,
     );
-    loop.start();
-    return () => loop.stop();
-  }, [isAnimationReady, speed]);
+    return () => cancelAnimation(animatedValueRef);
+  }, [animatedValueRef, isAnimationReady, reverse, speed]);
+  const animationWidth = WINDOW_WIDTH + (shimmerWidth ?? 0);
 
-  const animatedGradientStyle = React.useMemo(() => {
-    const animationWidth = WINDOW_WIDTH + (shimmerWidth ?? 0);
-    return {
-      ...StyleSheet.absoluteFillObject,
-      flexDirection: 'row' as const,
-      transform: [
-        {
-          translateX: animatedValueRef.current.interpolate({
-            inputRange: [0, 1],
-            outputRange:
-              direction === 'right'
-                ? [-animationWidth, animationWidth]
-                : [animationWidth, -animationWidth],
-          }),
-        },
-      ],
-    };
-  }, [direction, WINDOW_WIDTH, shimmerWidth]);
+  const animatedGradientStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    transform: [
+      {
+        translateX: interpolate(
+          animatedValueRef.value,
+          [0, 1],
+          direction === 'right'
+            ? [-animationWidth, animationWidth]
+            : [animationWidth, -animationWidth],
+        ),
+      },
+    ],
+  }));
 
   const placeholders = React.useMemo(() => {
-    if (!enabled) return null;
+    if (!enabled) {
+      return null;
+    }
 
     return (
       <View style={styles.placeholderContainer}>
@@ -122,10 +132,13 @@ const SkeletonPlaceholder: React.FC<SkeletonPlaceholderProps> & {
     [highlightColor],
   );
 
-  if (!enabled || !placeholders) return children;
+  if (!enabled || !placeholders) {
+    return children;
+  }
 
-  if (!layout?.width || !layout.height)
+  if (!layout?.width || !layout.height) {
     return <View onLayout={(event) => setLayout(event.nativeEvent.layout)}>{placeholders}</View>;
+  }
 
   // https://github.com/react-native-linear-gradient/react-native-linear-gradient/issues/358
   // to make transparent gradient we need to use original color with alpha
@@ -168,13 +181,72 @@ const transformToPlaceholder = (
   backgroundColor: string | undefined,
   radius: number | undefined,
 ) => {
-  if (!rootElement) return null;
+  if (!rootElement) {
+    return null;
+  }
 
   return React.Children.map(rootElement, (element: JSX.Element | null, index: number) => {
-    if (!element) return null;
+    if (!element) {
+      return null;
+    }
 
-    if (element.type === React.Fragment)
+    if (element.type === React.Fragment) {
       return <>{transformToPlaceholder(element.props?.children, backgroundColor, radius)}</>;
+    }
+
+    if (typeof element.type === 'function') {
+      const destruct = element.type();
+      const isPlaceholder =
+        !destruct.props?.children ||
+        typeof destruct.props.children === 'string' ||
+        (Array.isArray(destruct.props.children) &&
+          destruct.props.children.every((x: any) => x == null || typeof x === 'string'));
+
+      const props = destruct.props;
+      const style =
+        destruct.type?.displayName === SkeletonPlaceholder.Item.displayName
+          ? getItemStyle(destruct.props)
+          : Array.isArray(destruct.props.style)
+          ? destruct.props.style.reduce((flattenStyle, value) => ({...flattenStyle, ...value}), {})
+          : destruct.props.style;
+
+      const borderRadius = props?.borderRadius ?? style?.borderRadius ?? radius;
+      const width = props?.width ?? style?.width;
+      const height =
+        props?.height ??
+        style?.height ??
+        props?.lineHeight ??
+        style?.lineHeight ??
+        props?.fontSize ??
+        style?.fontSize;
+
+      const finalStyle = [
+        style,
+        isPlaceholder ? [styles.placeholder, {backgroundColor}] : styles.placeholderContainer,
+        {
+          height,
+          width,
+          borderRadius,
+        },
+      ];
+
+      logEnabled &&
+        console.log(isPlaceholder ? '[skeleton] placeholder' : '[skeleton] container', {
+          destruct,
+        });
+
+      return (
+        <View
+          key={index}
+          style={finalStyle}
+          children={
+            isPlaceholder
+              ? undefined
+              : transformToPlaceholder(destruct.props.children, backgroundColor, borderRadius)
+          }
+        />
+      );
+    }
 
     const isPlaceholder =
       !element.props?.children ||
@@ -186,6 +258,8 @@ const transformToPlaceholder = (
     const style =
       element.type?.displayName === SkeletonPlaceholder.Item.displayName
         ? getItemStyle(element.props)
+        : Array.isArray(element.props.style)
+        ? element.props.style.reduce((flattenStyle, value) => ({...flattenStyle, ...value}), {})
         : element.props.style;
 
     const borderRadius = props?.borderRadius ?? style?.borderRadius ?? radius;
@@ -212,12 +286,6 @@ const transformToPlaceholder = (
       console.log(isPlaceholder ? '[skeleton] placeholder' : '[skeleton] container', {
         element,
       });
-
-    if (
-      element.type?.displayName !== SkeletonPlaceholder.Item.displayName ||
-      element.type?.displayName !== 'View'
-    )
-      return element;
 
     return (
       <View
